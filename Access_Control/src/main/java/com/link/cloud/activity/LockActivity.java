@@ -642,6 +642,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                 AFR_FSDKMatching score = new AFR_FSDKMatching();
                 float max = 0.0f;
                 String name = null;
+                ((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.loadFaces();
                 Log.e(TAG, "loop: " + ((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.mFaceList.size());
                 if (((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.mFaceList.size() > 0) {
                     //是否识别成功(如果第一次没成功就再次循环验证一次)
