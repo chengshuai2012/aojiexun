@@ -2,32 +2,20 @@ package com.link.cloud.activity;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.app.PendingIntent;
-import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
-import android.hardware.usb.UsbDevice;
-import android.hardware.usb.UsbDeviceConnection;
-import android.hardware.usb.UsbManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Message;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -41,7 +29,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -77,55 +64,27 @@ import com.link.cloud.BaseApplication;
 import com.link.cloud.R;
 import com.link.cloud.base.ApiException;
 import com.link.cloud.bean.Code_Message;
-import com.link.cloud.bean.DownLoadData;
 import com.link.cloud.bean.Lockdata;
-import com.link.cloud.bean.PagesInfoBean;
-import com.link.cloud.bean.Person;
-import com.link.cloud.bean.RestResponse;
-import com.link.cloud.bean.SignUser;
-import com.link.cloud.bean.Sign_data;
-import com.link.cloud.bean.SyncFeaturesPage;
-import com.link.cloud.bean.SyncUserFace;
-import com.link.cloud.bean.UpDateBean;
 import com.link.cloud.constant.Constant;
-import com.link.cloud.contract.DownloadFeature;
 import com.link.cloud.contract.IsopenCabinet;
-import com.link.cloud.contract.SendLogMessageTastContract;
-import com.link.cloud.contract.SyncUserFeature;
 import com.link.cloud.core.BaseAppCompatActivity;
 import com.link.cloud.gpiotest.Gpio;
-import com.link.cloud.message.MessageEvent;
-import com.link.cloud.model.MdFvHelper;
 import com.link.cloud.setting.TtsSettings;
 import com.link.cloud.utils.APKVersionCodeUtils;
 import com.link.cloud.utils.FaceDB;
-import com.link.cloud.utils.FileUtils;
-import com.link.cloud.utils.Finger_identify;
 import com.link.cloud.utils.ToastUtils;
 import com.link.cloud.utils.Utils;
 import com.link.cloud.view.ExitAlertDialog;
 import com.orhanobut.logger.Logger;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import butterknife.Bind;
 import butterknife.OnClick;
-import io.realm.Realm;
-import io.realm.RealmResults;
-import md.com.sdk.MicroFingerVein;
 
-/**
- * Created by 30541 on 2018/3/12.
- */
-public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet.isopen,SyncUserFeature.syncUser,SendLogMessageTastContract.sendLog,DownloadFeature.download,CameraSurfaceView.OnCameraListener, View.OnTouchListener, Camera.AutoFocusCallback{
+public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet.isopen,CameraSurfaceView.OnCameraListener, View.OnTouchListener, Camera.AutoFocusCallback{
     @Bind(R.id.head_text_01)
     TextView head_text_01;
     @Bind(R.id.head_text_02)
@@ -149,80 +108,35 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     @Bind(R.id.text_error)
     TextView text_error;
     IsopenCabinet isopenCabinet;
-    private ArrayList<Fragment> mFragmentList = new ArrayList<Fragment>();
-    int state =0;
-    boolean ret = false;
-    SyncUserFeature syncUserFeature;
     String deviceId;
     public MesReceiver mesReceiver;
-    private final static int MSG_SHOW_LOG=0;
     BaseApplication baseApplication;
-    public  MicroFingerVein microFingerVein;
     String gpiostr;
-    String userUid;
-    public SendLogMessageTastContract sendLogMessageTastContract;
     public static final String ACTION_UPDATEUI = "com.link.cloud.dataTime";
     private static String ACTION_USB_PERMISSION = "com.android.USB_PERMISSION";
-    private final static float IDENTIFY_SCORE_THRESHOLD=0.63f;//认证通过的得分阈值，超过此得分才认为认证通过；
     SharedPreferences userinfo;
     String gpiotext="";
     String TAG="LockActivity";
-    private UsbDeviceConnection usbDevConn;
     ExitAlertDialog exitAlertDialog;
-    // 语音合成对象
-    public SpeechSynthesizer mTts;
-    // 默认本地发音人
-    public static String voicerLocal="xiaoyan";
-    // 本地发音人列表
-    private String[] localVoicersEntries;
-    private String[] localVoicersValue ;
-    // 云端/本地选择按钮
-    private RadioGroup mRadioGroup;
-    // 引擎类型
-    private String mEngineType = SpeechConstant.TYPE_CLOUD;
-    DownloadFeature downloadFeature;
-    private Toast mToast;
-    private SharedPreferences mSharedPreferences;
-    private Realm realm;
-    private RealmResults<Person> all;
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         baseApplication=(BaseApplication)getApplication();
-        EventBus.getDefault().register(this);
-        // 初始化合成对象
-        Log.e(TAG, Camera.getNumberOfCameras()+">>>>>>>>>>>>>>>>");
-        mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
-        mSharedPreferences = getSharedPreferences(TtsSettings.PREFER_NAME, Activity.MODE_PRIVATE);
-        sendLogMessageTastContract=new SendLogMessageTastContract();
-        sendLogMessageTastContract.attachView(this);
-//        TTSUtils.getInstance().init(this);
         exitAlertDialog=new ExitAlertDialog(this);
         exitAlertDialog.setCanceledOnTouchOutside(false);
         exitAlertDialog.setCancelable(false);
         BaseApplication.setMainActivity(this);
-        WorkService.setActactivity(this);
-        downloadFeature=new DownloadFeature();
-        downloadFeature.attachView(this);
-        setupExtra();
-        sendLogMessageTastContract=new SendLogMessageTastContract();
-        sendLogMessageTastContract.attachView(this);
+        mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
+        mSharedPreferences = getSharedPreferences(TtsSettings.PREFER_NAME, Activity.MODE_PRIVATE);
         setParam();
-        mEngineType =  SpeechConstant.TYPE_LOCAL;
-        mTts.startSpeaking("初始化成功", mTtsListener);
-        realm = Realm.getDefaultInstance();
-        RealmResults<Person> allAsync = realm.where(Person.class).findAll();
-        arrayList.addAll(realm.copyFromRealm(allAsync));
-
     }
-
-    ArrayList <Person>arrayList = new ArrayList();
-
-    /**
-     * 初始化监听。
-     */
+    private Toast mToast;
+    private SharedPreferences mSharedPreferences;
+    // 语音合成对象
+    public SpeechSynthesizer mTts;
+    // 默认本地发音人
+    public static String voicerLocal="xiaoyan";
     private InitListener mTtsInitListener = new InitListener() {
         @Override
         public void onInit(int code) {
@@ -236,19 +150,15 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             }
         }
     };
-    /**
-     * 参数设置
-     * @return
-     */
     public  void setParam(){
         // 清空参数
         mTts.setParameter(SpeechConstant.PARAMS, null);
-            //设置使用本地引擎
-            mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_LOCAL);
-            //设置发音人资源路径
-            mTts.setParameter(ResourceUtil.TTS_RES_PATH,getResourcePath());
-            //设置发音人
-            mTts.setParameter(SpeechConstant.VOICE_NAME,voicerLocal);
+        //设置使用本地引擎
+        mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_LOCAL);
+        //设置发音人资源路径
+        mTts.setParameter(ResourceUtil.TTS_RES_PATH,getResourcePath());
+        //设置发音人
+        mTts.setParameter(SpeechConstant.VOICE_NAME,voicerLocal);
         //设置合成语速
         mTts.setParameter(SpeechConstant.SPEED, mSharedPreferences.getString("speed_preference", "50"));
         //设置合成音调
@@ -284,27 +194,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             }
         });
     }
-    private void setupExtra() {
-        Intent intent=new Intent(this,WorkService.class);
-        if(!bindService(intent,mdSrvConn, Service.BIND_AUTO_CREATE)){
-            handler.removeCallbacksAndMessages(null);
-            finish();
-        }
-    }
-    private ServiceConnection mdSrvConn=new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            WorkService.MyBinder myBinder=(WorkService.MyBinder)service;
-            if(myBinder!=null){
-                microFingerVein=myBinder.getMicroFingerVeinInstance();
-                myBinder.setOnUsbMsgCallback(mdUsbMsgCallback);
-                startupParam();
-            }
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-        }
-    };
     EditText code_mumber;
     @Override
     protected void initData() {
@@ -359,122 +248,13 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
 
                         isopenCabinet.memberCode(deviceId, code_mumber.getText().toString());
                  }else {
-                        mTts.startSpeaking(getResources().getString(R.string.network_error),mTtsListener);
+
                     }
                     code_mumber.setText("");
             }
         }
     }
-    boolean bopen=false;
-    boolean bRun=false;
-    private Thread mdWorkThread=null;
-    private void startupParam() {
-        Logger.e("LockActivity"+"====startupParam===");
-        mdWorkThread=null;
-            bRun = true;
-            mdWorkThread = new Thread(runnable);
-            mdWorkThread.start();
-    }
-    boolean istext=false;
-    Runnable runnable=new Runnable() {
-        @Override
-        public void run() {
-            boolean ret = false;
-            int[] tipTimes = {0, 0};//后两次次建模时用了不同手指，重复提醒限制3次
-            int modOkProgress = 0;
-            while (bRun) {
-                if(!bopen&&microFingerVein!=null) {
-                    int cnt = microFingerVein.fvdev_get_count();
-                    if(cnt == 0) continue;
-                    bopen = microFingerVein.fvdev_open();//开启指定索引的设备
-                    try {
-                        Thread.sleep(100L);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    continue;
-                }
-                state = microFingerVein.fvdev_get_state();
-                //设备连接正常则进入正常建模或认证流程
-                if (state != 0&&istext==false) {
-                    long lasttime=System.currentTimeMillis();
-                    Logger.e("FirstFragment===========state" + state);
-                    if (state == 1 || state == 2) {
-                        continue;
-                    } else if (state == 3) {
 
-                    }
-
-                    byte[] img= MdFvHelper.tryGetFirstBestImg(microFingerVein,0,5);
-                    Logger.e("FirstFragment===========img" + img);
-                    if (img == null) {
-                        continue;
-                    }
-
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    Message message = Message.obtain();
-                    message.obj = img;
-                    message.what=11;
-                   handler.sendMessage(message);
-
-                    bRun=false;
-                }
-                else {
-                    istext=false;
-                    if (handler != null) {
-                        Message message = new Message();
-                        message.what = 0;
-                        handler.sendMessage(message);
-                    }
-                }
-            }
-        }
-    };
-    int isopen=0;
-    long starttime,lasttime;
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void messageEventBus(MessageEvent event){
-//        Logger.e("FirstFragment"+"========messageEventBus+type="+event.type+"isopen=="+isopen);
-        if (event.type==1&&isopen<1) {
-            userinfo=getSharedPreferences("user_info",MODE_MULTI_PROCESS);
-            deviceId=userinfo.getString("deviceId","");
-            String gpio=userinfo.getString("gpiotext",null);
-            if (gpio==null){
-                userinfo.edit().putString("gpiotext","1067").commit();
-            }
-            gpiotext=userinfo.getString(gpiotext,"");
-            Gpio.gpioInt(gpiotext);
-            Gpio.set(gpiotext,48);
-            text_error.setText(R.string.check_successful);
-             starttime=System.currentTimeMillis();
-                connectivityManager =(ConnectivityManager)LockActivity.this.getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-                NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-                    if (starttime-lasttime>500) {
-                        isopenCabinet.isopen(deviceId, userUid, "vein");
-                    lasttime = System.currentTimeMillis();
-                    }
-                }else {
-                    mTts.startSpeaking(getResources().getString(R.string.network_error),mTtsListener);
-                }
-
-        }else if (event.type==0&&isopen<1){
-            isopen=0;
-            if(istext){
-//                TTSUtils.getInstance().speak("验证失败");
-            }
-            mTts.startSpeaking(getResources().getString(R.string.check_failed),mTtsListener);
-            if(handler!=null){
-                handler.sendEmptyMessageDelayed(10,1000);
-            }
-            text_error.setText(R.string.check_failed);
-        }
-        isopen++;
-    }
     String  pwdmodel ="1";
     private class ExitAlertDialog1 extends Dialog implements View.OnClickListener {
         private Context mContext;
@@ -634,110 +414,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     @Override
     protected void initToolbar(Bundle savedInstanceState) {
     }
-    int openType;
-    long start=0,end=0;
-    Handler handler = new Handler() {
-        public void handleMessage(android.os.Message msg) {
-            switch (msg.what) {
-                case 0:
-                    text_error.setText(R.string.finger_right);
-                    break;
-                case 1:
-//                    userinfo=getSharedPreferences("user_info",MODE_MULTI_PROCESS);
-//                    String gpio=userinfo.getString("gpiotext",null);
-//                    deviceId=userinfo.getString("deviceId","");
-//                    if (gpio==null){
-//                        userinfo.edit().putString("gpiotext","1067").commit();
-//                    }
-//                    gpiotext=userinfo.getString(gpiotext,"");
-//                    Gpio.gpioInt(gpiotext);
-//                    Gpio.set(gpiotext,48);
-                    text_error.setText(R.string.check_successful);
-
-                    connectivityManager =(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-                    NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                    if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-                         start=System.currentTimeMillis();
-                        if (start-end>2000) {
-                            isopenCabinet.isopen(deviceId, userUid, "vein");
-                            end=System.currentTimeMillis();
-                        }
-                    }else {
-                        mTts.startSpeaking(getResources().getString(R.string.network_error),mTtsListener);
-                    }
-                    break;
-                case 7:
-//                    TTSUtils.getInstance().speak("验证失败");
-                    mTts.startSpeaking(getResources().getString(R.string.check_failed), mTtsListener);
-                    text_error.setText(R.string.check_failed);
-                    break;
-                case 8:
-                    text_error.setText(R.string.move_finger);
-                    break;
-                case MicroFingerVein.USB_HAS_REQUST_PERMISSION:
-                {
-                    UsbDevice usbDevice=(UsbDevice) msg.obj;
-                    UsbManager mManager=(UsbManager)getSystemService(Context.USB_SERVICE);
-                    PendingIntent mPermissionIntent = PendingIntent.getBroadcast(LockActivity.this, 0, new Intent(ACTION_USB_PERMISSION), 0);
-                    if(mManager == null)
-                    {
-                        mManager=(UsbManager)getSystemService(Context.USB_SERVICE);
-                        IntentFilter filter = new IntentFilter();
-                    }
-                    mManager.requestPermission(usbDevice,mPermissionIntent);
-                }
-                break;
-                case MicroFingerVein.USB_CONNECT_SUCESS: {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        UsbDevice usbDevice=(UsbDevice) msg.obj;
-//                        Logger.e(usbDevice.getManufacturerName()+"  节点："+usbDevice.getDeviceName());
-                    }
-                }
-                break;
-                case MicroFingerVein.USB_DISCONNECT:{
-                    Logger.e("NewMAinActivity=========="+ret);
-                }
-                break;
-                case MicroFingerVein.UsbDeviceConnection: {
-                    if(msg.obj!=null) {
-                        UsbDeviceConnection usbDevConn=(UsbDeviceConnection)msg.obj;
-                        if(LockActivity.this.isFinishing()||LockActivity.this.isDestroyed()) {
-                            //修复bug:启动activity几十毫秒内用户快速关闭activity，此时尚未收到usbDeviceConnection对象导致usb不能正常关闭
-                            usbDevConn.close();
-                        }
-                    }
-                }
-                break;
-                case 10:
-                    if(bRun==false){
-                        removeMessages(10);
-                        bRun=true;
-                        mdWorkThread.start();
-
-                    }
-                    break;
-                case 11:
-                    byte []img = (byte[]) msg.obj;
-
-                    userUid=Finger_identify.Finger_identify(LockActivity.this, img);
-                    isopen=0;
-                    istext=true;
-                    if (userUid!=null){
-
-                        EventBus.getDefault().post(new MessageEvent(1,getResources().getString(R.string.check_successful)));
-                    }else {
-
-                        EventBus.getDefault().post(new MessageEvent(0,getResources().getString(R.string.check_failed)));
-
-                    }
-
-
-
-                    break;
-
-            }
-        }
-    };
     ConnectivityManager connectivityManager;
     @OnClick({ R.id.button02, R.id.button1, R.id.button2, R.id.button3, R.id.button4,R.id.button5,R.id.button6, R.id.button7,R.id.head_text_02})
     public void onClick(View v) {
@@ -765,29 +441,8 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                 deviceId=userinfo.getString("deviceId","");
                 textView2.setText(deviceId);
                 break;
-            case R.id.head_text_02:
-                connectivityManager =(ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-                NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-                    exitAlertDialog.show();
-                    deviceId=userinfo.getString("deviceId","");
-//                    downloadFeature.getPagesInfo(deviceId);
-                    syncUserFeature.syncUser(deviceId);
-                    syncUserFeature.syncSign(deviceId);
-                }else {
-                    mTts.startSpeaking(getResources().getString(R.string.network_error),mTtsListener);
-                    Toast.makeText(this, getResources().getString(R.string.network_error), Toast.LENGTH_LONG).show();
-                }
-                break;
+
             case R.id.button5:
-                bRun=false;
-                try {
-                    mdWorkThread.join(200);
-                    mdWorkThread=null;
-                    System.gc();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
                 android.os.Process.killProcess(android.os.Process.myPid());
                 break;
                 case R.id.button6:
@@ -806,31 +461,8 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                 break;
         }
     }
-//    public static String desEncrypt(String datacode) throws Exception {
-//        try
-//        {
-//            String data = "LU8wzgej7Uzw2EGHRJuTT62zQ9kuyVCg4z0S1vg/1VR3cQdilIgnsAYouHksGcDl";
-//            String key = "rocketbird!@sjs!";
-//            String iv = "kiPqmEVXtZrgaVkf";
-//            byte[] encrypted1 = new BASE64Decoder().decodeBuffer(datacode);
-//            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-//            SecretKeySpec keyspec = new SecretKeySpec(key.getBytes(), "AES");
-//            IvParameterSpec ivspec = new IvParameterSpec(iv.getBytes());
-//            cipher.init(Cipher.DECRYPT_MODE, keyspec, ivspec);
-//            byte[] original = cipher.doFinal(encrypted1);
-//            String originalString = new String(original);
-//            return originalString;
-//        }
-//        catch (Exception e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-
     @Override
     public void qrCodeSuccess(Code_Message code_message) {
-//        TTSUtils.getInstance().speak("验证成功");
-        mTts.startSpeaking(getResources().getString(R.string.successful_open),mTtsListener);
         SharedPreferences sharedPreferences=getSharedPreferences("user_info",0);
         gpiostr=sharedPreferences.getString("gpiotext","");
         Logger.e("LockAcitvity"+"==========="+gpiostr);
@@ -838,152 +470,14 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             Gpio.gpioInt(gpiostr);
             Thread.sleep(400);
             Gpio.set(gpiostr,48);
-//            TTSUtils.getInstance().speak("门已开");
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         Gpio.set(gpiostr,49);
-//        if(bRun==false){
-//            bRun=true;
-//            mdWorkThread.start();
-//        }
-
-//        if(handler!=null){
-//            handler.sendEmptyMessageDelayed(10,1000);
-//        }
-
-    }
-
-    @Override
-    public void syncSignUserSuccess(Sign_data downLoadData) {
-        List<SignUser> data = downLoadData.getData();
-        RealmResults<SignUser> all = realm.where(SignUser.class).findAll();
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                all.deleteAllFromRealm();
-            }
-        });
-        realm.executeTransactionAsync(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for(int x= 0;x<data.size();x++){
-                    realm.copyToRealm(data.get(x));
-                }
-            }
-        });
-
-    }
-    @Override
-    public void syncUserSuccess(DownLoadData resultResponse) {
-        List<Person> data = resultResponse.getData();
-        if(all==null){
-            all = realm.where(Person.class).findAll();
-        }
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                all.deleteAllFromRealm();
-            }
-        });
-        ((BaseApplication) getApplicationContext().getApplicationContext()).getPerson().clear();
-        ((BaseApplication) getApplicationContext().getApplicationContext()).getPerson().addAll(data);
-        realm.executeTransactionAsync(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for (int x = 0; x < data.size(); x++) {
-                    realm.copyToRealm(data.get(x));
-                }
-            }
-        }, new Realm.Transaction.OnSuccess() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(LockActivity.this, getResources().getString(R.string.syn_data), Toast.LENGTH_SHORT).show();
-                mTts.startSpeaking(getResources().getString(R.string.syn_data),mTtsListener);
-                data.clear();
-                System.gc();
-                exitAlertDialog.dismiss();
-            }
-        }, new Realm.Transaction.OnError() {
-            @Override
-            public void onError(Throwable error) {
-                Toast.makeText(LockActivity.this, getResources().getString(R.string.syn_error), Toast.LENGTH_SHORT).show();
-                mTts.startSpeaking(getResources().getString(R.string.syn_error),mTtsListener);
-                data.clear();
-                System.gc();
-                exitAlertDialog.dismiss();
-            }
-        });
-
-
-
-    }
-
-    @Override
-    public void downloadNotReceiver(DownLoadData resultResponse) {
-
-    }
-
-    @Override
-    public void downloadApK(UpDateBean resultResponse) {
-
-    }
-
-    @Override
-    public void syncUserFacePagesSuccess(SyncUserFace resultResponse) {
-
-    }
-
-    @Override
-    public void downloadSuccess(DownLoadData resultResponse) {
 
     }
 
 
-    ArrayList<Person> SyncFeaturesPages = new ArrayList<>();
-    int totalPage=0,currentPage=1,downloadPage=0;
-    @Override
-    public void getPagesInfo(PagesInfoBean resultResponse) {
-        totalPage = resultResponse.getData().getPageCount();
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        for(int x =0 ;x<resultResponse.getData().getPageCount();x++){
-            Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    downloadFeature.syncUserFeaturePages(FileUtils.loadDataFromFile(LockActivity.this, "deviceId.text"), currentPage++);
-                }
-            };
-            service.execute(runnable);
-        }
-
-    }
-
-    @Override
-    public void syncUserFeaturePagesSuccess(SyncFeaturesPage resultResponse) {
-        if (resultResponse.getData().size()>0) {
-            downloadPage++;
-            Logger.e(resultResponse.getData().size() + getResources().getString(R.string.syn_data)+"current");
-            SyncFeaturesPages.addAll(resultResponse.getData());
-            Logger.e(SyncFeaturesPages.size() + getResources().getString(R.string.syn_data)+"total");
-            if (downloadPage == totalPage) {
-                realm.executeTransactionAsync(new Realm.Transaction() {
-                    @Override
-                    public void execute(Realm realm) {
-                        for(int x= 0;x<SyncFeaturesPages.size();x++){
-                            realm.copyToRealm(SyncFeaturesPages.get(x));
-                        }
-                    }
-                });
-                Logger.e(SyncFeaturesPages.size() + getResources().getString(R.string.syn_data));
-                NetworkInfo info = connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-                    downloadFeature.appUpdateInfo(FileUtils.loadDataFromFile(this, "deviceId.text"));
-                } else {
-                    Toast.makeText(this, getResources().getString(R.string.syn_data), Toast.LENGTH_LONG).show();
-                }
-            }
-
-        }}
     @Override
     protected void onResume() {
         Logger.e("resume");
@@ -1010,8 +504,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         registerReceiver(mesReceiver, intentFilter);
         isopenCabinet=new IsopenCabinet();
         isopenCabinet.attachView(this);
-        syncUserFeature=new SyncUserFeature();
-        syncUserFeature.attachView(this);
 
     }
     @Override
@@ -1020,7 +512,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     }
     @Override
     public void isopenSuccess(Lockdata resultResponse) {
-        mTts.startSpeaking(getResources().getString(R.string.successful_open), mTtsListener);
         SharedPreferences sharedPreferences=getSharedPreferences("user_info",0);
         gpiostr=sharedPreferences.getString("gpiotext","");
         Logger.e("LockAcitvity"+"==========="+gpiostr);
@@ -1033,9 +524,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             e.printStackTrace();
         }
         Gpio.set(gpiostr,49);
-      if(handler!=null){
-          handler.sendEmptyMessageDelayed(10,1000);
-      }
     }
 
     @Override
@@ -1043,10 +531,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         String reg = "[^\u4e00-\u9fa5]";
         String syt=e.getMessage().replaceAll(reg, "");
         Logger.e("BindActivity"+syt);
-        mTts.startSpeaking(syt,mTtsListener);
-        if(handler!=null){
-            handler.sendEmptyMessageDelayed(10,1000);
-        }
     }
     /**
      * 合成回调监听。
@@ -1077,33 +561,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         }
     };
     @Override
-    public void sendLogSuccess(RestResponse resultResponse) {
-    }
-    private WorkService.UsbMsgCallback mdUsbMsgCallback=new WorkService.UsbMsgCallback(){
-        @Override
-        public void onUsbConnSuccess(String usbManufacturerName, String usbDeviceName) {
-//            String newUsbInfo="USB厂商："+usbManufacturerName+"  \nUSB节点："+usbDeviceName;
-//            handler.obtainMessage(MSG_SHOW_LOG,newUsbInfo).sendToTarget();
-        }
-        @Override
-        public void onUsbDisconnect() {
-            handler.obtainMessage(MSG_SHOW_LOG,"usb disconnected.").sendToTarget();
-            if(microFingerVein!=null) {
-                microFingerVein.close();
-            }
-            bopen=false;
-        }
-        @Override
-        public void onUsbDeviceConnection(UsbDeviceConnection usbDevConn) {
-//            handler.obtainMessage(MSG_SHOW_LOG,"md usb device connection ok.").sendToTarget();
-            LockActivity.this.usbDevConn=usbDevConn;
-            if(LockActivity.this.isFinishing()||LockActivity.this.isDestroyed()) {
-//                Log.e(TAG,"√√√√√√√√√√√√√√√√√√√√√√√√√√√√√√");
-                LockActivity.this.usbDevConn.close();
-            }
-        }
-    };
-    @Override
     public void onResultError(ApiException e) {
         onError(e);
     }
@@ -1128,21 +585,8 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     }
     @Override
     protected void onDestroy() {
-        Logger.e("LockActivity"+"onDestroy");
-       // TTSUtils.getInstance().release();
-        if(usbDevConn==null){
-        }else{
-            usbDevConn.close();
-        }
-        if( null != mTts ){
-            mTts.stopSpeaking();
-            // 退出时释放连接
-            mTts.destroy();
-        }
-        realm.close();
-        EventBus.getDefault().unregister(this);
+
         unregisterReceiver(mesReceiver);
-        unbindService(mdSrvConn);
         if(Camera.getNumberOfCameras()!=0){
             mFRAbsLoop.shutdown();
             AFT_FSDKError err = engine.AFT_FSDK_UninitialFaceEngine();

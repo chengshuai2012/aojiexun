@@ -615,7 +615,7 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
     @Override
     public void onError(ApiException e) {
         if (downLoadListner!=null) {
-           // downLoadListner.finish();
+            downLoadListner.finish();
         }
     }
 

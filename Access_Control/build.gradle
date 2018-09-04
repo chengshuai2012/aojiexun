@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'me.tatarka.retrolambda'
-apply plugin: 'realm-android'
 allprojects {
     repositories {
         maven {
@@ -144,13 +143,11 @@ buildscript {
 }
 
 dependencies {
-    //    compile 'com.aliyun.ams:alicloud-android-push:2.+'
     compile 'com.android.support:multidex:1.0.0'
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile files('libs/dom4j-1.6.1.jar')
     compile files('libs/httpclient.jar')
     testCompile 'junit:junit:4.12'
-    //noinspection GradleCompatible
     compile 'com.android.support:support-v4:23.0.0'
     compile 'com.android.support:appcompat-v7:25.0.0'
     compile 'com.android.support:design:25.0.0'
@@ -162,14 +159,9 @@ dependencies {
     compile 'com.squareup.okhttp3:okhttp:3.4.1'
     compile 'com.squareup.okhttp3:logging-interceptor:3.4.1'
     compile 'com.squareup.retrofit2:adapter-rxjava:2.1.0'
-    //RxJava
     compile 'io.reactivex:rxandroid:1.2.1'
     compile 'io.reactivex:rxjava:1.1.6'
     compile 'com.androidkun:xversionupdate:1.0.4'
-    //Rxlifecycle
-    //compile 'com.trello:rxlifecycle:0.7.0'
-    //compile 'com.trello:rxlifecycle-components:0.7.0'
-    //Butterknife
     compile 'com.jakewharton:butterknife:7.0.1'
     //Dagger
     compile 'com.google.dagger:dagger:2.0'
