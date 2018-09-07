@@ -12,14 +12,11 @@ import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.Nullable;
-import android.text.Editable;
 import android.text.InputType;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -129,6 +126,8 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         BaseApplication.setMainActivity(this);
         mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
         mSharedPreferences = getSharedPreferences(TtsSettings.PREFER_NAME, Activity.MODE_PRIVATE);
+        userinfo = getSharedPreferences("user_info", MODE_MULTI_PROCESS);
+        deviceId = userinfo.getString("deviceId", "");
         setParam();
     }
     private Toast mToast;
@@ -207,52 +206,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         /**
           * EditText编辑框内容发生变化时的监听回调
           */
-        code_mumber.addTextChangedListener(new EditTextChangeListener());
-    }
-    public class EditTextChangeListener implements TextWatcher {
-        long lastTime;
-        /**
-         * 编辑框的内容发生改变之前的回调方法
-         */
-        @Override
-        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-//            Logger.e("MyEditTextChangeListener"+"beforeTextChanged---" + charSequence.toString());
-        }
-        /**
-         * 编辑框的内容正在发生改变时的回调方法 >>用户正在输入
-         * 我们可以在这里实时地 通过搜索匹配用户的输入
-         */
-        @Override
-        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-//            Logger.e("MyEditTextChangeListener"+"onTextChanged---" + charSequence.toString());
-        }
-        /**
-         * 编辑框的内容改变以后,用户没有继续输入时 的回调方法
-         */
-        @Override
-        public void afterTextChanged(Editable editable) {
-            String str=code_mumber.getText().toString();
-//            Logger.e("MyEditTextChangeListener"+ "afterTextChanged---"+code_mumber.getText().toString());
-            if (str.contains("\n")) {
-                    if(System.currentTimeMillis()-lastTime<1500){
-                        code_mumber.setText("");
-                        return;
-                    }
-                    lastTime=System.currentTimeMillis();
-                    userinfo = getSharedPreferences("user_info", MODE_MULTI_PROCESS);
-                    deviceId = userinfo.getString("deviceId", "");
-                    connectivityManager =(ConnectivityManager)LockActivity.this.getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-                    NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                    if (info != null) {
-                        //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-
-                        isopenCabinet.memberCode(deviceId, code_mumber.getText().toString());
-                 }else {
-
-                    }
-                    code_mumber.setText("");
-            }
-        }
     }
 
     String  pwdmodel ="1";
@@ -792,9 +745,14 @@ private long firstTime=0;
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             return true;
         } else {
+            if(keyCode==20){
+                Log.e(TAG, code_mumber.getText().toString() );
+                isopenCabinet.memberCode(deviceId, code_mumber.getText().toString());
+                code_mumber.setText("");
+                return true;
+                }
+            }
             return super.onKeyDown(keyCode, event);
         }
-    }
-
 
 }
