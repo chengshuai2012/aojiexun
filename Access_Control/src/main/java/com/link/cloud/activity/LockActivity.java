@@ -500,7 +500,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         super.onStart();
         mesReceiver = new MesReceiver();
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(LockActivity.ACTION_UPDATEUI);
+        intentFilter.addAction(BaseApplication.ACTION_UPDATEUI);
         registerReceiver(mesReceiver, intentFilter);
         isopenCabinet=new IsopenCabinet();
         isopenCabinet.attachView(this);
@@ -585,7 +585,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     }
     @Override
     protected void onDestroy() {
-
         unregisterReceiver(mesReceiver);
         if(Camera.getNumberOfCameras()!=0){
             mFRAbsLoop.shutdown();
