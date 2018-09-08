@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -34,7 +35,7 @@ public class WelcomeActivity extends Activity {
             createShortcutToDesktop();
         }
         handler.sendEmptyMessageDelayed(0,2000);
-
+        Log.e("onCreate: ",System.currentTimeMillis()+"" );
     }
 //    MesReceiver mesReceiver;
     @Override
