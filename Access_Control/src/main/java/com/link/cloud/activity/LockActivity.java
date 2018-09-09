@@ -115,7 +115,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     String gpiotext = "";
     String TAG = "LockActivity";
     ExitAlertDialog exitAlertDialog;
-
+    long time =0;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -129,6 +129,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         mSharedPreferences = getSharedPreferences(TtsSettings.PREFER_NAME, Activity.MODE_PRIVATE);
         userinfo = getSharedPreferences("user_info", MODE_MULTI_PROCESS);
         deviceId = userinfo.getString("deviceId", "");
+        time = 1000L*60L*60L*24L*30L;
         setParam();
     }
 
@@ -774,8 +775,15 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             if (keyCode == 20) {
                 String code = code_mumber.getText().toString();
                 long now = System.currentTimeMillis();
-                if ("1293883536549".equals(code) && now - Long.parseLong(code) < 1000 * 60 * 60 * 24 * 30) {
+                code =code.replace("\n","");
+                long passTime = now - Long.parseLong(code);
+                Logger.e("1536490732355".equals (code)+"");
+                Logger.e((passTime< time)+"");
+                Logger.e(passTime+"");
+                Logger.e(time+"");
 
+                if ("1536490729828".equals(code) &&passTime< time) {
+                    Logger.e("LockAcitvity" + "===========" + (now - Long.parseLong(code)));
                     SharedPreferences sharedPreferences = getSharedPreferences("user_info", 0);
                     gpiostr = sharedPreferences.getString("gpiotext", "");
                     Logger.e("LockAcitvity" + "===========" + gpiostr);
@@ -788,7 +796,8 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                     }
                     Gpio.set(gpiostr, 49);
                     isopenCabinet.memberCode(deviceId, code);
-                } else if ("1293883536549".equals(code) && now - Long.parseLong(code) < 1000 * 60 * 60 * 24 * 30) {
+                } else if ("1536490732355".equals (code)&&passTime<time ){
+                    Logger.e("LockAcitvity" + "===========" + (now - Long.parseLong(code)));
                     SharedPreferences sharedPreferences = getSharedPreferences("user_info", 0);
                     gpiostr = sharedPreferences.getString("gpiotext", "");
                     Logger.e("LockAcitvity" + "===========" + gpiostr);
